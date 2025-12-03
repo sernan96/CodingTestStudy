@@ -1,25 +1,13 @@
-import logo from './logo.svg';
-import './App.css';
+import logo from "./assets/logo.png";
+import "./App.css";
+import useAuthStore from "./store/authStore";
+import LoginPage from "./pages/LoginPage";
+import StudyListPage from "./pages/StudyListPage";
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+  const token = useAuthStore((state) => state.token);
+
+  return <div className="App">{token ? <StudyListPage /> : <LoginPage />}</div>;
 }
 
 export default App;
