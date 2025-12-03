@@ -1,50 +1,65 @@
 import React, { useState, useEffect } from "react";
 import logo from "../assets/logo.png";
 import StudyDetailPage from "./StudyDetailPage";
-
-const DUMMY_STUDIES = [
-  {
-    id: 1,
-    name: "React 스터디",
-    description: "React 심화 학습 및 프로젝트",
-  },
-  {
-    id: 2,
-    name: "JavaScript ES6+",
-    description: "모던 JavaScript 문법 습득",
-  },
-  {
-    id: 3,
-    name: "Node.js 백엔드",
-    description: "Express를 이용한 서버 개발",
-  },
-  {
-    id: 4,
-    name: "데이터베이스 설계",
-    description: "SQL 및 NoSQL 학습",
-  },
-  {
-    id: 5,
-    name: "클라우드 컴퓨팅",
-    description: "AWS 및 Azure 활용",
-  },
-];
+import useAuthStore from "../store/authStore";
 
 function StudyListPage() {
-  const [studies, setStudies] = useState(DUMMY_STUDIES);
-  const [loading, setLoading] = useState(false);
+  const [studies, setStudies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedStudy, setSelectedStudy] = useState(null);
+  const token = useAuthStore((state) => state.token);
 
   useEffect(() => {
-    // 더미데이터 사용
+    fetchStudies();
   }, []);
+
+  const fetchStudies = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5000/api/study/list");
+      if (response.ok) {
+        const data = await response.json();
+        setStudies(data.studies);
+        setError("");
+      } else {
+        setError("스터디 목록을 불러올 수 없습니다");
+      }
+    } catch (error) {
+      console.error("스터디 목록 조회 오류:", error);
+      setError("서버에 연결할 수 없습니다");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (selectedStudy) {
     return (
       <StudyDetailPage
         studyId={selectedStudy.id}
+        studyName={selectedStudy.name}
         onBack={() => setSelectedStudy(null)}
       />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="study-list-page">
+        <img src={logo} className="page-logo" alt="logo" />
+        <h1>스터디 목록</h1>
+        <p>로딩 중...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="study-list-page">
+        <img src={logo} className="page-logo" alt="logo" />
+        <h1>스터디 목록</h1>
+        <p style={{ color: "#e74c3c" }}>{error}</p>
+      </div>
     );
   }
 

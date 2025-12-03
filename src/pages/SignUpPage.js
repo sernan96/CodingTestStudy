@@ -35,7 +35,7 @@ function SignUpPage({ onSwitchToLogin }) {
 
     try {
       // API 호출 (필요에 따라 URL 수정)
-      const response = await fetch("/api/signup", {
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, name }),
@@ -51,7 +51,7 @@ function SignUpPage({ onSwitchToLogin }) {
       }
     } catch (error) {
       console.error("회원가입 오류:", error);
-      setError("오류가 발생했습니다");
+      setError("서버에 연결할 수 없습니다");
     } finally {
       setLoading(false);
     }

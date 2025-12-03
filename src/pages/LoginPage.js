@@ -16,7 +16,7 @@ function LoginPage({ onSwitchToSignUp }) {
 
     try {
       // API 호출 (필요에 따라 URL 수정)
-      const response = await fetch("/api/login", {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -26,11 +26,12 @@ function LoginPage({ onSwitchToSignUp }) {
         const data = await response.json();
         setToken(data.token);
       } else {
-        setError("로그인 실패. 이메일과 비밀번호를 확인해주세요.");
+        const errorData = await response.json();
+        setError(errorData.message || "로그인 실패");
       }
     } catch (error) {
       console.error("로그인 오류:", error);
-      setError("오류가 발생했습니다");
+      setError("서버에 연결할 수 없습니다");
     } finally {
       setLoading(false);
     }
