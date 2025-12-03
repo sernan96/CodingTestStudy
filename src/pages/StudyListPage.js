@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import logo from "../assets/logo.png";
+import StudyDetailPage from "./StudyDetailPage";
 
 const DUMMY_STUDIES = [
   {
@@ -32,10 +33,20 @@ const DUMMY_STUDIES = [
 function StudyListPage() {
   const [studies, setStudies] = useState(DUMMY_STUDIES);
   const [loading, setLoading] = useState(false);
+  const [selectedStudy, setSelectedStudy] = useState(null);
 
   useEffect(() => {
     // 더미데이터 사용
   }, []);
+
+  if (selectedStudy) {
+    return (
+      <StudyDetailPage
+        studyId={selectedStudy.id}
+        onBack={() => setSelectedStudy(null)}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -57,7 +68,7 @@ function StudyListPage() {
             <div key={study.id} className="study-card">
               <h2>{study.name}</h2>
               <p>{study.description}</p>
-              <button>자세히 보기</button>
+              <button onClick={() => setSelectedStudy(study)}>입장</button>
             </div>
           ))}
         </div>

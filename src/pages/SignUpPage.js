@@ -2,34 +2,55 @@ import React, { useState } from "react";
 import logo from "../assets/logo.png";
 import useAuthStore from "../store/authStore";
 
-function LoginPage({ onSwitchToSignUp }) {
+function SignUpPage({ onSwitchToLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const setToken = useAuthStore((state) => state.setToken);
 
-  const handleLogin = async (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
     setError("");
+
+    // 유효성 검사
+    if (!email || !password || !passwordConfirm || !name) {
+      setError("모든 필드를 입력해주세요.");
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      setError("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("비밀번호는 최소 6자 이상이어야 합니다.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       // API 호출 (필요에 따라 URL 수정)
-      const response = await fetch("/api/login", {
+      const response = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, name }),
       });
 
       if (response.ok) {
         const data = await response.json();
         setToken(data.token);
+        alert("회원가입이 완료되었습니다!");
       } else {
-        setError("로그인 실패. 이메일과 비밀번호를 확인해주세요.");
+        const errorData = await response.json();
+        setError(errorData.message || "회원가입 실패");
       }
     } catch (error) {
-      console.error("로그인 오류:", error);
+      console.error("회원가입 오류:", error);
       setError("오류가 발생했습니다");
     } finally {
       setLoading(false);
@@ -40,8 +61,15 @@ function LoginPage({ onSwitchToSignUp }) {
     <div className="login-page">
       <img src={logo} className="page-logo" alt="logo" />
       <div className="login-container">
-        <h1>로그인</h1>
-        <form onSubmit={handleLogin}>
+        <h1>회원가입</h1>
+        <form onSubmit={handleSignUp}>
+          <input
+            type="text"
+            placeholder="이름"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
           <input
             type="email"
             placeholder="이메일"
@@ -56,19 +84,26 @@ function LoginPage({ onSwitchToSignUp }) {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <input
+            type="password"
+            placeholder="비밀번호 확인"
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.target.value)}
+            required
+          />
           {error && <div className="error-message">{error}</div>}
           <button type="submit" disabled={loading}>
-            {loading ? "로그인 중..." : "로그인"}
+            {loading ? "회원가입 중..." : "회원가입"}
           </button>
         </form>
         <div className="auth-switch">
-          <span>혹시 계정없냐?</span>
+          <span>이미 계정이 있으신가요?</span>
           <button
             type="button"
             className="switch-button"
-            onClick={onSwitchToSignUp}
+            onClick={onSwitchToLogin}
           >
-            회원가입
+            로그인
           </button>
         </div>
       </div>
@@ -76,4 +111,4 @@ function LoginPage({ onSwitchToSignUp }) {
   );
 }
 
-export default LoginPage;
+export default SignUpPage;
