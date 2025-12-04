@@ -11,7 +11,7 @@ const getEnv = (key, defaultValue = "") => {
 const config = {
   // API 설정
   api: {
-    baseURL: process.env.REACT_APP_API_BASE_URL || "http://localhost:5000",
+    baseURL: process.env.REACT_APP_API_BASE_URL,
     timeout: parseInt(process.env.REACT_APP_API_TIMEOUT || "10000", 10),
 
     // 엔드포인트
@@ -51,16 +51,17 @@ const config = {
   // UI 설정
   ui: {
     vacation: {
-      earlyMorningStart:
-        parseInt(process.env.REACT_APP_VACATION_EARLY_MORNING_START || "0", 10),
-      earlyMorningEnd:
-        parseInt(process.env.REACT_APP_VACATION_EARLY_MORNING_END || "6", 10),
-    },
-    study: {
-      maxMembers: parseInt(
-        process.env.REACT_APP_MAX_STUDY_MEMBERS || "6",
+      earlyMorningStart: parseInt(
+        process.env.REACT_APP_VACATION_EARLY_MORNING_START || "0",
         10
       ),
+      earlyMorningEnd: parseInt(
+        process.env.REACT_APP_VACATION_EARLY_MORNING_END || "6",
+        10
+      ),
+    },
+    study: {
+      maxMembers: parseInt(process.env.REACT_APP_MAX_STUDY_MEMBERS || "6", 10),
       defaultVacationDays: parseInt(
         process.env.REACT_APP_DEFAULT_VACATION_DAYS || "10",
         10
