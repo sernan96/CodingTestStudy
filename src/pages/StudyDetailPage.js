@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import logo from "../assets/logo.png";
 import useAuthStore from "../store/authStore";
+import config from "../config/env";
 
 // 사이트별 난이도 기준
 const BAEKJOON_TIERS = [
@@ -38,6 +39,7 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
   const [showModal, setShowModal] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
+  const [showStackResetConfirm, setShowStackResetConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [members, setMembers] = useState([]);
@@ -55,6 +57,20 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
   });
 
   useEffect(() => {
+    // 스터디 변경시 상태 초기화
+    setMembers([]);
+    setSolved({});
+    setJoinCode("");
+    setIsOwner(false);
+    setError("");
+    setFormData({
+      site: "백준",
+      problemNumber: "",
+      tier: "Bronze",
+      level: "V",
+      programmerLevel: "0",
+    });
+    setProblemDate("today");
     fetchStudyDetail();
   }, [studyId]);
 
@@ -69,14 +85,13 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
         return;
       }
 
-      const response = await fetch(
-        `http://localhost:5000/api/study/${studyId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${currentToken}`,
-          },
-        }
-      );
+      const url =
+        config.getApiUrl(config.api.endpoints.study.detail) + `/${studyId}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+        },
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -121,14 +136,16 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
     days.push(i);
   }
 
-  const isSolved = (day, member) => {
+  const isSolved = (day, memberId) => {
     if (!day) return false;
     const y = currentDate.getFullYear();
     const m = String(currentDate.getMonth() + 1).padStart(2, "0");
     const d = String(day).padStart(2, "0");
     const dateStr = `${y}-${m}-${d}`;
 
-    return displaySolved?.[dateStr]?.includes(member) || false;
+    // memberId는 member.userId 또는 member.id일 수 있음
+    const userIds = displaySolved?.[dateStr] || [];
+    return userIds.includes(memberId);
   };
 
   // ⬇️ getKoreaDate 대신 이거 추가
@@ -143,9 +160,12 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
     const today = currentDate.getDate();
     let streak = 0;
 
+    // 멤버 ID 결정 (userId가 없으면 id 사용)
+    const memberId = member.userId || member.id;
+
     // 어제부터 역순으로 확인
     for (let day = today - 1; day >= 1; day--) {
-      if (!isSolved(day, member.userId)) {
+      if (!isSolved(day, memberId)) {
         streak++;
       } else {
         break;
@@ -185,7 +205,8 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
         return;
       }
 
-      const response = await fetch("http://localhost:5000/api/problem", {
+      const url = config.getApiUrl(config.api.endpoints.problem.register);
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -250,20 +271,18 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
         return;
       }
 
-      const response = await fetch(
-        "http://localhost:5000/api/problem/vacation/use",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${currentToken}`,
-          },
-          body: JSON.stringify({
-            studyId,
-            targetDate: targetDateStr,
-          }),
-        }
-      );
+      const url = config.getApiUrl(config.api.endpoints.problem.vacationUse);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${currentToken}`,
+        },
+        body: JSON.stringify({
+          studyId,
+          targetDate: targetDateStr,
+        }),
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -287,15 +306,14 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
         return;
       }
 
-      const response = await fetch(
-        `http://localhost:5000/api/study/${studyId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${currentToken}`,
-          },
-        }
-      );
+      const url =
+        config.getApiUrl(config.api.endpoints.study.withdraw) + `/${studyId}`;
+      const response = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+        },
+      });
 
       if (response.ok) {
         console.log("스터디 탈퇴 성공");
@@ -310,6 +328,40 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
       alert("서버에 연결할 수 없습니다");
     }
   };
+
+  const handleResetStack = async () => {
+    try {
+      const currentToken = token || localStorage.getItem("token");
+      if (!currentToken) {
+        alert("로그인이 필요합니다");
+        return;
+      }
+
+      const url =
+        config.getApiUrl(config.api.endpoints.study.detail) +
+        `/${studyId}/reset-stack`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+        },
+      });
+
+      if (response.ok) {
+        alert("스택이 초기화되었습니다!");
+        setShowStackResetConfirm(false);
+        await fetchStudyDetail();
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || "스택 초기화 실패");
+      }
+    } catch (error) {
+      console.error("스택 초기화 오류:", error);
+      alert("서버에 연결할 수 없습니다");
+    }
+  };
+
+  console.log(members);
   return (
     <div className="study-detail-page">
       <div className="detail-header">
@@ -346,6 +398,17 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
           </button>
           {showMenuModal && (
             <div className="menu-dropdown">
+              {isOwner && (
+                <button
+                  className="menu-item"
+                  onClick={() => {
+                    setShowStackResetConfirm(true);
+                    setShowMenuModal(false);
+                  }}
+                >
+                  🔄 스택 초기화
+                </button>
+              )}
               <button
                 className="menu-item"
                 onClick={() => setShowWithdrawConfirm(true)}
@@ -402,9 +465,9 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
                             누적: {member.monthlyVacation}
                           </span>
                         </div>
-                        {calculateStreak(member) > 0 && (
+                        {member.stack > 0 && (
                           <span className="streak-warning">
-                            {calculateStreak(member)} 스택
+                            {member.stack} 스택
                           </span>
                         )}
                       </div>
@@ -469,7 +532,7 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
                                 title={
                                   isEarlyMorning()
                                     ? "월차 사용 가능"
-                                    : "월차 사용은 0시~6시에만 가능합니다"
+                                    : "월차 사용 불가능"
                                 }
                               >
                                 월차
@@ -478,26 +541,27 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
                         </div>
                         <div className="day-solvers">
                           {displayMembers && displayMembers.length > 0 ? (
-                            displayMembers.map((member) => (
-                              <div
-                                key={member.id}
-                                className={`solver-dot ${
-                                  isSolved(day, member.userId)
-                                    ? "solved"
-                                    : "unsolved"
-                                }`}
-                                style={{
-                                  backgroundColor: isSolved(day, member.userId)
-                                    ? member.color
-                                    : "#e0e0e0",
-                                }}
-                                title={`${member.name} - ${
-                                  isSolved(day, member.userId)
-                                    ? "풀음"
-                                    : "안 풀음"
-                                }`}
-                              />
-                            ))
+                            displayMembers.map((member) => {
+                              const memberId = member.userId || member.id;
+                              return (
+                                <div
+                                  key={member.id}
+                                  className={`solver-dot ${
+                                    isSolved(day, memberId)
+                                      ? "solved"
+                                      : "unsolved"
+                                  }`}
+                                  style={{
+                                    backgroundColor: isSolved(day, memberId)
+                                      ? member.color
+                                      : "#e0e0e0",
+                                  }}
+                                  title={`${member.name} - ${
+                                    isSolved(day, memberId) ? "풀음" : "안 풀음"
+                                  }`}
+                                />
+                              );
+                            })
                           ) : (
                             <div className="no-solvers">
                               아직 풀이 기록이 없습니다
@@ -755,6 +819,31 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
                 아니오
               </button>
               <button className="confirm-yes" onClick={handleWithdraw}>
+                네
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 스택 초기화 확인 모달 */}
+      {showStackResetConfirm && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowStackResetConfirm(false)}
+        >
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-header">
+              <p>정말로 스택을 초기화하시겠어요?</p>
+            </div>
+            <div className="confirm-buttons">
+              <button
+                className="confirm-no"
+                onClick={() => setShowStackResetConfirm(false)}
+              >
+                아니오
+              </button>
+              <button className="confirm-yes" onClick={handleResetStack}>
                 네
               </button>
             </div>

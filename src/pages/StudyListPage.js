@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import logo from "../assets/logo.png";
 import StudyDetailPage from "./StudyDetailPage";
 import useAuthStore from "../store/authStore";
+import config from "../config/env";
 
 export const StudyListPage = () => {
   const [studies, setStudies] = useState([]);
@@ -20,7 +21,6 @@ export const StudyListPage = () => {
   const [showCreateSuccess, setShowCreateSuccess] = useState(false);
   const [createdStudyData, setCreatedStudyData] = useState(null);
   const token = useAuthStore((state) => state.token);
-  const clearToken = useAuthStore((state) => state.clearToken);
 
   const handleLogout = async () => {
     if (!window.confirm("로그아웃하시겠습니까?")) return;
@@ -30,7 +30,8 @@ export const StudyListPage = () => {
       const tokenVal =
         useAuthStore.getState()?.token || localStorage.getItem("token");
       if (tokenVal) {
-        await fetch("http://localhost:5000/api/auth/logout", {
+        const url = config.getApiUrl("/api/auth/logout");
+        await fetch(url, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${tokenVal}`,
@@ -67,7 +68,18 @@ export const StudyListPage = () => {
   const fetchStudies = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/study/list");
+      const currentToken = token || localStorage.getItem("token");
+      if (!currentToken) {
+        setError("로그인이 필요합니다");
+        setLoading(false);
+        return;
+      }
+      const url = config.getApiUrl(config.api.endpoints.study.list);
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setStudies(data.studies);
@@ -99,7 +111,8 @@ export const StudyListPage = () => {
         return;
       }
 
-      const response = await fetch("http://localhost:5000/api/study/join", {
+      const url = config.getApiUrl(config.api.endpoints.study.join);
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -141,7 +154,8 @@ export const StudyListPage = () => {
     }
     try {
       setCreateLoading(true);
-      const response = await fetch("http://localhost:5000/api/study", {
+      const url = config.getApiUrl(config.api.endpoints.study.create);
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -216,7 +230,7 @@ export const StudyListPage = () => {
         onClick={handleLogout}
         aria-label="로그아웃"
       >
-        🚪
+        로그아웃
       </button>
       <img src={logo} className="page-logo" alt="logo" />
       <div className="list-header">

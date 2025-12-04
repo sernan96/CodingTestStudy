@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import logo from "../assets/logo.png";
 import useAuthStore from "../store/authStore";
+import config from "../config/env";
 
 function SignUpPage({ onSwitchToLogin }) {
   const [email, setEmail] = useState("");
@@ -34,8 +35,8 @@ function SignUpPage({ onSwitchToLogin }) {
     setLoading(true);
 
     try {
-      // API 호출 (필요에 따라 URL 수정)
-      const response = await fetch("http://localhost:5000/api/auth/signup", {
+      const url = config.getApiUrl(config.api.endpoints.auth.signup);
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, name }),
