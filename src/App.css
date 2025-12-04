@@ -1045,3 +1045,194 @@
 .detail-header .register-button {
   white-space: nowrap;
 }
+
+/* 스터디 목록 헤더 */
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  gap: 20px;
+}
+
+.list-header h1 {
+  margin: 0;
+  flex: 1;
+}
+
+.join-study-button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.join-study-button:hover {
+  background: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);
+}
+
+/* 스터디 카드 수정 */
+.study-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.study-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.study-code {
+  font-size: 12px;
+  color: #7f8c8d;
+  margin: 8px 0;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.study-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 15px;
+  border-top: 1px solid #ecf0f1;
+}
+
+.member-count {
+  font-size: 12px;
+  color: #95a5a6;
+}
+
+.study-card button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.study-card button:hover {
+  background: #2980b9;
+}
+
+/* 가입 모달 스타일 */
+.join-form .form-group {
+  margin-bottom: 20px;
+}
+
+.join-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.join-form input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.join-form input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.form-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 25px;
+}
+
+.cancel-button,
+.submit-button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cancel-button {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.cancel-button:hover {
+  background: #bdc3c7;
+}
+
+.submit-button {
+  background: #3498db;
+  color: white;
+}
+
+.submit-button:hover {
+  background: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);
+}
+
+.submit-button:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 헤더 제목 섹션 */
+.header-title-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+}
+
+.header-title-section h1 {
+  margin: 0;
+}
+
+.join-code-display {
+  font-size: 12px;
+  color: #3498db;
+  background: #ecf7ff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #3498db;
+  font-weight: 500;
+  user-select: none;
+}
+
+.join-code-display:hover {
+  background: #3498db;
+  color: white;
+  transform: scale(1.05);
+}
+
+

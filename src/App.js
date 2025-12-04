@@ -3,7 +3,7 @@ import { useState } from "react";
 import useAuthStore from "./store/authStore";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
-import StudyListPage from "./pages/StudyListPage";
+import { StudyListPage } from "./pages/StudyListPage";
 
 function App() {
   const token = useAuthStore((state) => state.token) || null;

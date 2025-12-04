@@ -37,6 +37,7 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
   const [error, setError] = useState("");
   const [members, setMembers] = useState([]);
   const [solved, setSolved] = useState({});
+  const [joinCode, setJoinCode] = useState("");
   const token = useAuthStore((state) => state.token);
   const [formData, setFormData] = useState({
     site: "백준",
@@ -73,6 +74,7 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
         const data = await response.json();
         setMembers(data.members || []);
         setSolved(data.solved || {});
+        setJoinCode(data.joinCode || "");
         setError("");
       } else {
         setError("스터디 정보를 불러올 수 없습니다");
@@ -271,7 +273,21 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
         <button className="back-button" onClick={onBack}>
           ← 돌아가기
         </button>
-        <h1>{studyName || "스터디"}</h1>
+        <div className="header-title-section">
+          <h1>{studyName || "스터디"}</h1>
+          {joinCode && (
+            <div
+              className="join-code-display"
+              onClick={() => {
+                navigator.clipboard.writeText(joinCode);
+                alert("가입코드가 복사되었습니다!");
+              }}
+              title="클릭하여 복사"
+            >
+              코드: {joinCode}
+            </div>
+          )}
+        </div>
         <div className="header-buttons">
           <button
             className="register-button"
