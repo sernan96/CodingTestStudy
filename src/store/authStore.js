@@ -15,6 +15,12 @@ const useAuthStore = create((set) => ({
   logout: () => {
     localStorage.removeItem("token");
     set({ token: null });
+  }, // logout 함수는 여기서 끝납니다.
+
+  // clearToken은 logout 밖으로 나와야 합니다.
+  clearToken: () => {
+    localStorage.removeItem("token");
+    set({ token: null });
   },
 }));
 

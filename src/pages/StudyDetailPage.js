@@ -29,7 +29,12 @@ const DIFFICULTY_CRITERIA = {
 };
 
 function StudyDetailPage({ studyId, studyName, onBack }) {
-  const [currentDate] = useState(new Date(2025, 11, 4));
+  // 현재 시간을 사용하도록 변경 (데모용으로 고정했던 날짜 제거)
+  // ✅ 한국 시간 기준 현재 시각 (UTC 기준 +9시간)
+  const currentDate = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })
+  );
+
   const [showModal, setShowModal] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
@@ -38,6 +43,8 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
   const [members, setMembers] = useState([]);
   const [solved, setSolved] = useState({});
   const [joinCode, setJoinCode] = useState("");
+  const [isOwner, setIsOwner] = useState(false);
+  const [problemDate, setProblemDate] = useState("today"); // "today" 또는 "yesterday"
   const token = useAuthStore((state) => state.token);
   const [formData, setFormData] = useState({
     site: "백준",
@@ -55,7 +62,8 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
     try {
       setLoading(true);
       // 인증 토큰이 없으면 API 호출하지 않음
-      if (!token) {
+      const currentToken = token || localStorage.getItem("token");
+      if (!currentToken) {
         setError("로그인이 필요합니다. 로그인 후 다시 시도하세요.");
         setLoading(false);
         return;
@@ -65,7 +73,7 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
         `http://localhost:5000/api/study/${studyId}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${currentToken}`,
           },
         }
       );
@@ -75,6 +83,7 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
         setMembers(data.members || []);
         setSolved(data.solved || {});
         setJoinCode(data.joinCode || "");
+        setIsOwner(!!data.isOwner);
         setError("");
       } else {
         setError("스터디 정보를 불러올 수 없습니다");
@@ -87,57 +96,11 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
     }
   };
 
-  // 더미 스터디원 데이터 - 월차 정보 추가
-  const DUMMY_MEMBERS = [
-    {
-      id: 1,
-      name: "김철수",
-      color: "#FF6B6B",
-      monthlyVacation: 3,
-      vacationUsed: 1,
-    },
-    {
-      id: 2,
-      name: "이영희",
-      color: "#4ECDC4",
-      monthlyVacation: 5,
-      vacationUsed: 0,
-    },
-    {
-      id: 3,
-      name: "박민준",
-      color: "#45B7D1",
-      monthlyVacation: 2,
-      vacationUsed: 2,
-    },
-    {
-      id: 4,
-      name: "최수진",
-      color: "#F7DC6F",
-      monthlyVacation: 8,
-      vacationUsed: 0,
-    },
-    {
-      id: 5,
-      name: "정준호",
-      color: "#BB8FCE",
-      monthlyVacation: 6,
-      vacationUsed: 1,
-    },
-  ];
-
-  // 더미 풀이 데이터
-  const DUMMY_SOLVED = {
-    "2025-12-01": [1, 3],
-    "2025-12-02": [2, 4, 5],
-    "2025-12-03": [1, 2, 3, 4],
-    "2025-12-04": [1, 5],
-  };
-
-  // API에서 데이터를 받으면 사용, 아니면 더미 데이터 사용
-  const displayMembers = members.length > 0 ? members : DUMMY_MEMBERS;
-  const displaySolved = Object.keys(solved).length > 0 ? solved : DUMMY_SOLVED;
-
+  // 실제 API 데이터를 사용. 데이터가 없으면 빈 상태로 보임(테스트용 더미 제거)
+  const displayMembers = members;
+  console.log("displayMembers:", displayMembers);
+  const displaySolved = solved;
+  console.log("displaySolved:", displaySolved);
   // 달력 생성
   const getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -158,20 +121,31 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
     days.push(i);
   }
 
-  const isSolved = (day, memberId) => {
+  const isSolved = (day, member) => {
     if (!day) return false;
-    const dateStr = `2025-12-${String(day).padStart(2, "0")}`;
-    return displaySolved[dateStr]?.includes(memberId) || false;
+    const y = currentDate.getFullYear();
+    const m = String(currentDate.getMonth() + 1).padStart(2, "0");
+    const d = String(day).padStart(2, "0");
+    const dateStr = `${y}-${m}-${d}`;
+
+    return displaySolved?.[dateStr]?.includes(member) || false;
+  };
+
+  // ⬇️ getKoreaDate 대신 이거 추가
+  const todayKorea = {
+    y: currentDate.getFullYear(),
+    m: String(currentDate.getMonth() + 1).padStart(2, "0"),
+    d: String(currentDate.getDate()).padStart(2, "0"),
   };
 
   // 스택 계산: 당일까지 풀지 않은 연속 일수
-  const calculateStreak = (memberId) => {
+  const calculateStreak = (member) => {
     const today = currentDate.getDate();
     let streak = 0;
 
     // 어제부터 역순으로 확인
     for (let day = today - 1; day >= 1; day--) {
-      if (!isSolved(day, memberId)) {
+      if (!isSolved(day, member.userId)) {
         streak++;
       } else {
         break;
@@ -183,6 +157,15 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    let targetDate;
+    if (problemDate === "yesterday") {
+      const yesterday = new Date(currentDate);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const y = yesterday.getFullYear();
+      const m = String(yesterday.getMonth() + 1).padStart(2, "0");
+      const d = String(yesterday.getDate()).padStart(2, "0");
+      targetDate = `${y}-${m}-${d}`; // 한국 기준 '어제'
+    }
 
     // API에 보낼 데이터 준비
     const payload = {
@@ -192,14 +175,21 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
       tier: formData.site === "백준" ? formData.tier : undefined,
       level:
         formData.site === "백준" ? formData.level : formData.programmerLevel,
+      targetDate, // 문제를 기록할 날짜
     };
 
     try {
+      const currentToken = token || localStorage.getItem("token");
+      if (!currentToken) {
+        alert("로그인이 필요합니다");
+        return;
+      }
+
       const response = await fetch("http://localhost:5000/api/problem", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${currentToken}`,
         },
         body: JSON.stringify(payload),
       });
@@ -217,9 +207,13 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
           level: "V",
           programmerLevel: "0",
         });
+        setProblemDate("today");
       } else {
         const errorData = await response.json();
-        alert("문제 등록 실패: " + (errorData.error || "알 수 없는 오류"));
+        alert(
+          "문제 등록 실패: " +
+            (errorData.message || errorData.error || "알 수 없는 오류")
+        );
       }
     } catch (error) {
       console.error("문제 등록 오류:", error);
@@ -241,14 +235,64 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
     return 0;
   };
 
+  // 0시~6시 사이인지 확인 (현재 시각 사용)
+  const isEarlyMorning = () => {
+    const hour = new Date().getHours();
+    return hour >= 0 && hour < 6;
+  };
+
+  // 월차 사용 함수
+  const handleUseVacation = async (targetDateStr) => {
+    try {
+      const currentToken = token || localStorage.getItem("token");
+      if (!currentToken) {
+        alert("로그인이 필요합니다");
+        return;
+      }
+
+      const response = await fetch(
+        "http://localhost:5000/api/problem/vacation/use",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${currentToken}`,
+          },
+          body: JSON.stringify({
+            studyId,
+            targetDate: targetDateStr,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        alert("월차를 사용했습니다!");
+        await fetchStudyDetail();
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || "월차 사용 실패");
+      }
+    } catch (error) {
+      console.error("월차 사용 오류:", error);
+      alert("서버에 연결할 수 없습니다");
+    }
+  };
+
   const handleWithdraw = async () => {
     try {
+      const currentToken = token || localStorage.getItem("token");
+      if (!currentToken) {
+        alert("로그인이 필요합니다");
+        return;
+      }
+
       const response = await fetch(
         `http://localhost:5000/api/study/${studyId}`,
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${currentToken}`,
           },
         }
       );
@@ -266,7 +310,6 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
       alert("서버에 연결할 수 없습니다");
     }
   };
-
   return (
     <div className="study-detail-page">
       <div className="detail-header">
@@ -307,7 +350,7 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
                 className="menu-item"
                 onClick={() => setShowWithdrawConfirm(true)}
               >
-                탈퇴하기
+                {isOwner ? "스터디 삭제" : "탈퇴하기"}
               </button>
             </div>
           )}
@@ -332,39 +375,45 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
           <div className="members-section">
             <h2>스터디원</h2>
             <div className="members-list">
-              {displayMembers.map((member) => {
-                const remainingVacation =
-                  member.monthlyVacation - member.vacationUsed;
-                const isGreedy = member.monthlyVacation > 8;
+              {displayMembers && displayMembers.length > 0 ? (
+                displayMembers.map((member) => {
+                  const remainingVacation =
+                    member.monthlyVacation - member.vacationUsed;
+                  const isGreedy = member.monthlyVacation > 8;
 
-                return (
-                  <div key={member.id} className="member-item">
-                    {isGreedy && <div className="greedy-badge">욕심쟁이~</div>}
-                    <div
-                      className="member-avatar"
-                      style={{ backgroundColor: member.color }}
-                    >
-                      {member.name.charAt(0)}
-                    </div>
-                    <div className="member-info">
-                      <span className="member-name">{member.name}</span>
-                      <div className="member-vacation-info">
-                        <span className="vacation-badge">
-                          남은 월차: {remainingVacation}
-                        </span>
-                        <span className="vacation-count">
-                          누적: {member.monthlyVacation}
-                        </span>
-                      </div>
-                      {calculateStreak(member.id) > 0 && (
-                        <span className="streak-warning">
-                          {calculateStreak(member.id)} 스택
-                        </span>
+                  return (
+                    <div key={member.id} className="member-item">
+                      {isGreedy && (
+                        <div className="greedy-badge">월차 full😋</div>
                       )}
+                      <div
+                        className="member-avatar"
+                        style={{ backgroundColor: member.color }}
+                      >
+                        {member.name.charAt(0)}
+                      </div>
+                      <div className="member-info">
+                        <span className="member-name">{member.name}</span>
+                        <div className="member-vacation-info">
+                          <span className="vacation-badge">
+                            남은 월차: {remainingVacation}
+                          </span>
+                          <span className="vacation-count">
+                            누적: {member.monthlyVacation}
+                          </span>
+                        </div>
+                        {calculateStreak(member) > 0 && (
+                          <span className="streak-warning">
+                            {calculateStreak(member)} 스택
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div className="empty-members">아직 가입한 멤버가 없습니다</div>
+              )}
             </div>
           </div>
 
@@ -389,24 +438,71 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
                   <div key={index} className="calendar-day">
                     {day && (
                       <>
-                        <div className="day-number">{day}</div>
+                        <div className="day-header">
+                          <div className="day-number">{day}</div>
+                          {day === Number(todayKorea.d) &&
+                            currentDate.getMonth() + 1 ===
+                              Number(todayKorea.m) && (
+                              <button
+                                className={`vacation-button ${
+                                  isEarlyMorning() ? "enabled" : "disabled"
+                                }`}
+                                onClick={() => {
+                                  const target = new Date(
+                                    currentDate.getFullYear(),
+                                    currentDate.getMonth(),
+                                    day
+                                  );
+                                  const y = target.getFullYear();
+                                  const m = String(
+                                    target.getMonth() + 1
+                                  ).padStart(2, "0");
+                                  const d = String(target.getDate()).padStart(
+                                    2,
+                                    "0"
+                                  );
+                                  const dateStr = `${y}-${m}-${d}`;
+
+                                  handleUseVacation(dateStr);
+                                }}
+                                disabled={!isEarlyMorning()}
+                                title={
+                                  isEarlyMorning()
+                                    ? "월차 사용 가능"
+                                    : "월차 사용은 0시~6시에만 가능합니다"
+                                }
+                              >
+                                월차
+                              </button>
+                            )}
+                        </div>
                         <div className="day-solvers">
-                          {displayMembers.map((member) => (
-                            <div
-                              key={member.id}
-                              className={`solver-dot ${
-                                isSolved(day, member.id) ? "solved" : "unsolved"
-                              }`}
-                              style={{
-                                backgroundColor: isSolved(day, member.id)
-                                  ? member.color
-                                  : "#e0e0e0",
-                              }}
-                              title={`${member.name} - ${
-                                isSolved(day, member.id) ? "풀음" : "안 풀음"
-                              }`}
-                            />
-                          ))}
+                          {displayMembers && displayMembers.length > 0 ? (
+                            displayMembers.map((member) => (
+                              <div
+                                key={member.id}
+                                className={`solver-dot ${
+                                  isSolved(day, member.userId)
+                                    ? "solved"
+                                    : "unsolved"
+                                }`}
+                                style={{
+                                  backgroundColor: isSolved(day, member.userId)
+                                    ? member.color
+                                    : "#e0e0e0",
+                                }}
+                                title={`${member.name} - ${
+                                  isSolved(day, member.userId)
+                                    ? "풀음"
+                                    : "안 풀음"
+                                }`}
+                              />
+                            ))
+                          ) : (
+                            <div className="no-solvers">
+                              아직 풀이 기록이 없습니다
+                            </div>
+                          )}
                         </div>
                       </>
                     )}
@@ -449,6 +545,44 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
             </div>
 
             <form onSubmit={handleSubmit} className="problem-form">
+              <div className="form-group">
+                <label>날짜 선택</label>
+                <div className="date-selection">
+                  <label
+                    className={`date-option ${
+                      problemDate === "today" ? "active" : ""
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      value="today"
+                      checked={problemDate === "today"}
+                      onChange={(e) => setProblemDate(e.target.value)}
+                    />
+                    오늘
+                  </label>
+                  <label
+                    className={`date-option ${
+                      problemDate === "yesterday" ? "active" : ""
+                    } ${!isEarlyMorning() ? "disabled-label" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      value="yesterday"
+                      checked={problemDate === "yesterday"}
+                      onChange={(e) => setProblemDate(e.target.value)}
+                      disabled={!isEarlyMorning()}
+                    />
+                    어제
+                  </label>
+                  {!isEarlyMorning() && (
+                    <p className="time-info">
+                      ⏰ 어제 문제 등록은 0시~6시에만 가능합니다
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <div className="form-group">
                 <label>사이트 선택</label>
                 <select
@@ -607,7 +741,11 @@ function StudyDetailPage({ studyId, studyName, onBack }) {
         >
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
             <div className="confirm-header">
-              <p>정말로 탈퇴하시겠어요?</p>
+              <p>
+                {isOwner
+                  ? "정말로 스터디를 삭제하시겠어요?"
+                  : "정말로 탈퇴하시겠어요?"}
+              </p>
             </div>
             <div className="confirm-buttons">
               <button

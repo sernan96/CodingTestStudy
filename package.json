@@ -19,7 +19,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "setup:env": "cp .env.example .env && echo '✅ .env 파일이 생성되었습니다. 값을 수정해주세요.'"
   },
   "eslintConfig": {
     "extends": [

@@ -12,7 +12,53 @@ export const StudyListPage = () => {
   const [joinCode, setJoinCode] = useState("");
   const [joinError, setJoinError] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createMaxMembers, setCreateMaxMembers] = useState(3);
+  const [createError, setCreateError] = useState("");
+  const [createLoading, setCreateLoading] = useState(false);
+  const [showCreateSuccess, setShowCreateSuccess] = useState(false);
+  const [createdStudyData, setCreatedStudyData] = useState(null);
   const token = useAuthStore((state) => state.token);
+  const clearToken = useAuthStore((state) => state.clearToken);
+
+  const handleLogout = async () => {
+    if (!window.confirm("로그아웃하시겠습니까?")) return;
+
+    // 먼저 서버에 폐기 요청
+    try {
+      const tokenVal =
+        useAuthStore.getState()?.token || localStorage.getItem("token");
+      if (tokenVal) {
+        await fetch("http://localhost:5000/api/auth/logout", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${tokenVal}`,
+          },
+        });
+      }
+    } catch (err) {
+      // 실패해도 클라이언트에서 토큰 제거
+      console.error("서버 로그아웃 요청 실패:", err);
+    }
+
+    try {
+      const store = useAuthStore.getState();
+      if (store && typeof store.clearToken === "function") {
+        store.clearToken();
+      } else if (store && typeof store.logout === "function") {
+        store.logout();
+      } else if (store && typeof store.setToken === "function") {
+        store.setToken(null);
+      } else {
+        localStorage.removeItem("token");
+      }
+    } catch (e) {
+      localStorage.removeItem("token");
+    }
+
+    window.location.href = "/";
+  };
 
   useEffect(() => {
     fetchStudies();
@@ -46,11 +92,18 @@ export const StudyListPage = () => {
 
     try {
       setJoinLoading(true);
+      const currentToken = token || localStorage.getItem("token");
+      if (!currentToken) {
+        setJoinError("로그인이 필요합니다");
+        setJoinLoading(false);
+        return;
+      }
+
       const response = await fetch("http://localhost:5000/api/study/join", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${currentToken}`,
         },
         body: JSON.stringify({ joinCode: joinCode.trim() }),
       });
@@ -75,12 +128,63 @@ export const StudyListPage = () => {
     }
   };
 
+  const handleCreateStudy = async (e) => {
+    e.preventDefault();
+    if (!createName.trim()) {
+      setCreateError("스터디명을 입력해주세요");
+      return;
+    }
+    const currentToken = token || localStorage.getItem("token");
+    if (!currentToken) {
+      setCreateError("로그인이 필요합니다");
+      return;
+    }
+    try {
+      setCreateLoading(true);
+      const response = await fetch("http://localhost:5000/api/study", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${currentToken}`,
+        },
+        body: JSON.stringify({
+          name: createName.trim(),
+          maxMembers: createMaxMembers,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // show nicer success modal
+        setCreatedStudyData(data.study || null);
+        setShowCreateSuccess(true);
+        setCreateName("");
+        setCreateMaxMembers(3);
+        setCreateError("");
+        setShowCreateModal(false);
+        // 목록 새로고침
+        await fetchStudies();
+      } else {
+        const errorData = await response.json();
+        setCreateError(errorData.message || "스터디 생성에 실패했습니다");
+      }
+    } catch (error) {
+      console.error("스터디 생성 오류:", error);
+      setCreateError("서버에 연결할 수 없습니다");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   if (selectedStudy) {
     return (
       <StudyDetailPage
         studyId={selectedStudy.id}
         studyName={selectedStudy.name}
-        onBack={() => setSelectedStudy(null)}
+        onBack={() => {
+          setSelectedStudy(null);
+          fetchStudies();
+        }}
       />
     );
   }
@@ -107,19 +211,39 @@ export const StudyListPage = () => {
 
   return (
     <div className="study-list-page">
+      <button
+        className="floating-logout"
+        onClick={handleLogout}
+        aria-label="로그아웃"
+      >
+        🚪
+      </button>
       <img src={logo} className="page-logo" alt="logo" />
       <div className="list-header">
         <h1>스터디 목록</h1>
-        <button
-          className="join-study-button"
-          onClick={() => {
-            setShowJoinModal(true);
-            setJoinError("");
-            setJoinCode("");
-          }}
-        >
-          + 스터디 가입
-        </button>
+        <div className="header-buttons">
+          <button
+            className="create-study-button"
+            onClick={() => {
+              setShowCreateModal(true);
+              setCreateError("");
+              setCreateName("");
+              setCreateMaxMembers(3);
+            }}
+          >
+            📌 스터디 생성
+          </button>
+          <button
+            className="join-study-button"
+            onClick={() => {
+              setShowJoinModal(true);
+              setJoinError("");
+              setJoinCode("");
+            }}
+          >
+            + 스터디 가입
+          </button>
+        </div>
       </div>
 
       {studies.length === 0 ? (
@@ -129,10 +253,11 @@ export const StudyListPage = () => {
           {studies.map((study) => (
             <div key={study.id} className="study-card">
               <h2>{study.name}</h2>
-              <p className="study-code">코드: {study.joinCode}</p>
+              <p className="study-code">
+                코드: {study.joinCode.substring(0, 4)}...
+              </p>
               <p>{study.description}</p>
               <div className="study-card-footer">
-                <span className="member-count">인원: {study.memberCount}</span>
                 <button onClick={() => setSelectedStudy(study)}>입장</button>
               </div>
             </div>
@@ -192,6 +317,126 @@ export const StudyListPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 생성 모달 */}
+      {showCreateModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>스터디 생성</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowCreateModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateStudy} className="join-form">
+              <div className="form-group">
+                <label>스터디명</label>
+                <input
+                  type="text"
+                  placeholder="스터디 이름을 입력하세요"
+                  value={createName}
+                  onChange={(e) => {
+                    setCreateName(e.target.value);
+                    setCreateError("");
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>
+                  최대 인원:{" "}
+                  <span className="members-value">{createMaxMembers}명</span>
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="6"
+                  value={createMaxMembers}
+                  onChange={(e) => {
+                    setCreateMaxMembers(parseInt(e.target.value));
+                    setCreateError("");
+                  }}
+                  className="members-slider"
+                />
+                <div className="slider-labels">
+                  <span>1명</span>
+                  <span>6명</span>
+                </div>
+              </div>
+
+              {createError && (
+                <div className="error-message" style={{ marginBottom: "15px" }}>
+                  {createError}
+                </div>
+              )}
+
+              <div className="form-buttons">
+                <button
+                  type="button"
+                  className="cancel-button"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="submit-button"
+                  disabled={createLoading}
+                  style={{ backgroundColor: "#27ae60" }}
+                >
+                  {createLoading ? "생성 중..." : "생성"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* 생성 성공 모달 */}
+      {showCreateSuccess && createdStudyData && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowCreateSuccess(false)}
+        >
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 500 }}
+          >
+            <div className="modal-header">
+              <h2>스터디 생성 완료</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowCreateSuccess(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: 16 }}>
+              <p>
+                <strong>{createdStudyData.name}</strong> 스터디가
+                생성되었습니다.
+              </p>
+              <p>가입 코드: {createdStudyData.joinCode}</p>
+              <div style={{ textAlign: "right", marginTop: 12 }}>
+                <button
+                  className="submit-button"
+                  onClick={() => setShowCreateSuccess(false)}
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
